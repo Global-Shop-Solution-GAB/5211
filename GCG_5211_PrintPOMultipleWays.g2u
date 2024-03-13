@@ -1,0 +1,380 @@
+Program.Sub.ScreenSU.Start
+Gui.FormOutputSelection..Create
+Gui.FormOutputSelection..Caption("Output")
+Gui.FormOutputSelection..Size(3255,2490)
+Gui.FormOutputSelection..MinX(0)
+Gui.FormOutputSelection..MinY(0)
+Gui.FormOutputSelection..Position(0,0)
+Gui.FormOutputSelection..BackColor(-2147483633)
+Gui.FormOutputSelection..MousePointer(0)
+Gui.FormOutputSelection..MaxButton(False)
+Gui.FormOutputSelection..MinButton(False)
+Gui.FormOutputSelection..Sizeable(False)
+Gui.FormOutputSelection..Event(UnLoad,FormOutputSelection_UnLoad)
+Gui.FormOutputSelection..AlwaysOnTop(True)
+Gui.FormOutputSelection.checkView.Create(CheckBox)
+Gui.FormOutputSelection.checkView.Size(855,360)
+Gui.FormOutputSelection.checkView.Position(135,150)
+Gui.FormOutputSelection.checkView.Caption("View")
+Gui.FormOutputSelection.checkExport.Create(CheckBox)
+Gui.FormOutputSelection.checkExport.Size(870,360)
+Gui.FormOutputSelection.checkExport.Position(1680,150)
+Gui.FormOutputSelection.checkExport.Caption("Export")
+Gui.FormOutputSelection.checkEmail.Create(CheckBox)
+Gui.FormOutputSelection.checkEmail.Size(810,360)
+Gui.FormOutputSelection.checkEmail.Position(135,870)
+Gui.FormOutputSelection.checkEmail.Caption("Email")
+Gui.FormOutputSelection.checkPrint.Create(CheckBox)
+Gui.FormOutputSelection.checkPrint.Size(735,360)
+Gui.FormOutputSelection.checkPrint.Position(1680,870)
+Gui.FormOutputSelection.checkPrint.Caption("Print")
+Gui.FormOutputSelection.buttonSubmit.Create(Button)
+Gui.FormOutputSelection.buttonSubmit.Size(990,375)
+Gui.FormOutputSelection.buttonSubmit.Position(1035,1710)
+Gui.FormOutputSelection.buttonSubmit.Caption("Submit")
+Gui.FormOutputSelection.buttonSubmit.Event(Click,buttonSubmit_Click)
+Gui.FormOutputSelection.ddlView.Create(DropDownList)
+Gui.FormOutputSelection.ddlView.Size(1305,330)
+Gui.FormOutputSelection.ddlView.Position(120,525)
+Gui.FormOutputSelection.ddlEmail.Create(DropDownList)
+Gui.FormOutputSelection.ddlEmail.Size(1305,330)
+Gui.FormOutputSelection.ddlEmail.Position(120,1245)
+Gui.FormOutputSelection.ddlExport.Create(DropDownList)
+Gui.FormOutputSelection.ddlExport.Size(1305,330)
+Gui.FormOutputSelection.ddlExport.Position(1680,525)
+Gui.FormOutputSelection.ddlPrint.Create(DropDownList)
+Gui.FormOutputSelection.ddlPrint.Size(1305,330)
+Gui.FormOutputSelection.ddlPrint.Position(1680,1245)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+V.Global.sParameterNames.Declare(String, "Terminal*!*ReportID*!*UseVendorCurr*!*PRTCNFRM*!*PROGRAM*!*PRTHIST*!*QTYDEC")
+V.Global.sParameters.Declare(String)
+V.Global.sNoPriceParameters.Declare(String)
+V.Global.sPO.Declare(String)
+V.Global.bDeactivated.Declare(Boolean, False)
+V.Global.iActiveSequence.Declare(Long)
+V.Global.bBoth.Declare(Boolean)
+V.Global.sVendor.Declare(String)
+V.Global.sBuyer.Declare(String)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'GCG_5211_PrintPOMultipleWays.g2u
+'Trey Seddon
+'9/18/2018
+'For Spec Tools
+
+'Modifying so that sequence selection is on first window
+
+
+V.Local.sError.Declare(String)
+F.Intrinsic.Control.Try
+
+F.Intrinsic.Control.SelectCase(V.Caller.Hook)
+	F.Intrinsic.Control.Case(16890)
+		'script 1 button
+		'Launch program
+		'PO-NUM	000008
+		'Vendor 000011
+		
+		V.Global.sPO.Set(V.Passed.000008)
+		V.Global.sVendor.Set(V.Passed.000011)
+		V.Global.sBuyer.Set(V.Passed.000035)
+		
+		'Need to load and enable each drop down
+		F.ODBC.Connection!Con.OpenCompanyConnection
+		F.Intrinsic.Control.CallSub(PopulateDropDowns)
+		F.ODBC.Connection!Con.Close
+		
+		GUI.FormOutputSelection..Show
+		
+	F.Intrinsic.Control.Case(16850)
+		'Purchase order open populate hook
+		'Change script 1 button name, deactivate
+		'000065 Script 1 button
+		V.Passed.000065.Set("Output")
+		F.Intrinsic.UI.ChangeCallerProperty(V.Passed.000065, "LOCK", 1)
+		
+	F.Intrinsic.Control.Case(16855)
+		'Purchase order changed hook
+		'Unlock script 1 button
+		F.Intrinsic.UI.ChangeCallerProperty(V.Passed.000065, "LOCK", 0)
+	
+	F.Intrinsic.Control.Case(16880)
+		'16880 post save
+		F.Intrinsic.Control.If(V.Passed.000008, =, "")
+			F.Intrinsic.UI.ChangeCallerProperty(V.Passed.000065, "LOCK", 1)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.UI.ChangeCallerProperty(V.Passed.000065, "LOCK", 0)
+		F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndSelect
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.FormOutputSelection_UnLoad.Start
+F.Intrinsic.Control.End
+Program.Sub.FormOutputSelection_UnLoad.End
+
+Program.Sub.PopulateDropDowns.Start
+V.Local.sError.Declare(String)
+F.Intrinsic.Control.Try
+
+V.Local.sSelect.Declare(String)
+
+'Populate view
+GUI.FormOutputSelection.ddlView.AddItem("Price")
+GUI.FormOutputSelection.ddlView.Text("Price")
+Gui.FormOutputSelection.ddlView.Enabled(False)
+
+'populate export
+GUI.FormOutputSelection.ddlExport.AddItem("Both",0)
+Gui.FormOutputSelection.ddlExport.AddItem("Price",1)
+Gui.FormOutputSelection.ddlExport.AddItem("No Price",2)
+GUI.FormOutputSelection.ddlExport.Text("Both")
+
+
+'populate email
+GUI.FormOutputSelection.ddlEmail.AddItem("Price")
+GUI.FormOutputSelection.ddlEmail.Text("Price")
+Gui.FormOutputSelection.ddlEmail.Enabled(False)
+
+'populate print
+GUI.FormOutputSelection.ddlPrint.AddItem("Both",0)
+Gui.FormOutputSelection.ddlPrint.AddItem("Price",1)
+Gui.FormOutputSelection.ddlPrint.AddItem("No Price",2)
+GUI.FormOutputSelection.ddlPrint.Text("Both")
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.PopulateDropDowns.End
+
+
+Program.Sub.buttonSubmit_Click.Start
+V.Local.sError.Declare(String)
+F.Intrinsic.Control.Try
+
+V.Local.sSQL.Declare(String)
+V.Local.sRet.Declare(String)
+V.Local.sPO.Declare(String)
+
+'Check the values of the check boxes, call the appropriate subroutines
+GUI.FormOutputSelection..Visible(False)
+F.Intrinsic.Control.If(V.Screen.FormOutputSelection!checkView.Value, =, 1, OR, V.Screen.FormOutputSelection!checkExport.Value, =, 1, V.Screen.FormOutputSelection!checkEmail.Value, =, 1, V.Screen.FormOutputSelection!checkPrint.Value, =, 1)
+	
+	F.ODBC.Connection!Con.OpenCompanyConnection
+	'check if PO has any lines
+	V.Local.sPO.Set(V.Global.sPO)
+	F.Intrinsic.String.LPad(V.Local.sPO, "0", 7, V.Local.sPO)
+	F.Intrinsic.String.Build("select Record_No from V_PO_Lines where PURCHASE_ORDER = '{0}'", V.Local.sPO, V.Local.sSQL)
+	F.ODBC.Connection!Con.ExecuteAndReturn(V.Local.sSQL, V.Local.sRet)
+	
+	F.Intrinsic.Control.If(V.Ambient.ExecuteAndReturnEOF)
+		F.Intrinsic.UI.Msgbox("This PO has no lines to print. Exiting...")
+		F.Intrinsic.Control.CallSub(FormReportSelection_UnLoad)
+	F.Intrinsic.Control.EndIf
+	
+	V.Local.iPriceRunID.Declare(Long)
+	V.Local.iNoPriceRunID.Declare(Long)
+	F.Global.BI.GetRunID(V.Local.iPriceRunID)
+	F.Global.BI.GetRunID(V.Local.iNoPriceRunID)	
+	
+	V.Local.iNoPriceLogID.Declare(Long)
+	V.Local.iPriceLogID.Declare(Long)
+	'F.Global.BI.StartLogging(V.Local.iPriceRunID, 2801, 0, "",V.Local.iPriceLogID)
+	F.Global.BI.StartLogging(V.Local.iNoPriceRunID,2801,0,"",V.Local.iNoPriceLogID)
+	F.Global.BI.StartLogging(V.Local.iPriceRunID,100020,0,"",V.Local.iPriceLogID)
+	'F.Global.BI.StartLogging(V.Local.iNoPriceRunID, 100020, 0, "", V.Local.iNoPriceLogID)
+	
+	
+	'Run the preprocessor to generate the data
+	V.Local.sPreProcParams.Declare(String)
+	F.Intrinsic.String.Build("{0}!*!S!*! !*!N!*!N", V.Global.sPO, V.Local.sPreProcParams)	
+	F.Global.General.CallWrapperSyncBIO(915000, V.Local.sPreProcParams)
+	
+	'Get Decimal Quantity on PO (Company Options Adv. > Purchasing > Set Decimal Value)
+	V.Local.sSQL.Set("Select (Case When F_LONG = 1 Then 4 When F_LONG = 2 Then 2  Else 0  End) AS QtyDec FROM OP_HEADER where ID = '400289'")
+	V.Local.iQtyDec.Declare(Long)
+	F.ODBC.Connection!Con.ExecuteAndReturn(V.Local.sSQL, V.Local.sRet)
+	F.Intrinsic.Control.If(V.Ambient.ExecuteAndReturnEOF, =, False)
+		V.Local.iQtyDec.Set(V.Local.sRet)
+	F.Intrinsic.Control.EndIf
+	F.ODBC.Connection!Con.Close
+	
+	'set the parameters
+	F.Intrinsic.String.Build("{0}*!*{1}*!* *!* *!* *!* *!*{2}*!* *!*", V.Caller.Terminal, "002801", V.Local.iQtyDec, V.Global.sParameters)
+	
+	F.Global.BI.StopLogging(V.Local.iNoPriceLogID)
+	F.Global.BI.StopLogging(V.Local.iPriceLogID)
+	
+	'run the reports for the output types selected, make sure to activate the right ones
+	'View
+	F.Intrinsic.Control.If(V.Screen.FormOutputSelection!checkView.Value, =, 1)
+		F.Intrinsic.Control.CallSub(View, "iPriceRunID", V.Local.iPriceRunID, "iPriceLogID", V.Local.iPriceLogID)
+		
+	F.Intrinsic.Control.EndIf
+	
+	'Export
+	F.Intrinsic.Control.If(V.Screen.FormOutputSelection!checkExport.Value, =, 1)
+		F.Intrinsic.Control.CallSub(Export, "iPriceRunID", V.Local.iPriceRunID,"iNoPriceRunID", V.Local.iNoPriceRunID, "iPriceLogID", V.Local.iPriceLogID, "iNoPriceLogID",V.Local.iNoPriceLogID)
+		
+	F.Intrinsic.Control.EndIf
+	
+	'Email
+	F.Intrinsic.Control.If(V.Screen.FormOutputSelection!checkEmail.Value, =, 1)
+		F.Intrinsic.Control.CallSub(Email, "iPriceRunID", V.Local.iPriceRunID, "iPriceLogID", V.Local.iPriceLogID)
+		
+	F.Intrinsic.Control.EndIf
+	
+	'Print
+	F.Intrinsic.Control.If(V.Screen.FormOutputSelection!checkPrint.Value, =, 1)
+		F.Intrinsic.Control.CallSub(Print, "iPriceRunID", V.Local.iPriceRunID,"iNoPriceRunID", V.Local.iNoPriceRunID, "iPriceLogID", V.Local.iPriceLogID, "iNoPriceLogID",V.Local.iNoPriceLogID)
+		
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.buttonSubmit_Click.End
+
+Program.Sub.View.Start
+V.Local.sError.Declare(String)
+F.Intrinsic.Control.Try
+
+V.Local.iRet.Declare(Long)
+F.Global.BI.RunReportPreProcessor(V.Args.iPriceRunID, V.Args.iPriceLogID, V.Global.sParameterNames, V.Global.sParameters, "100020", 16, True, "", -1, "", -1, "", "", V.Local.iRet)
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.View.End
+
+Program.Sub.Export.Start
+V.Local.sError.Declare(String)
+F.Intrinsic.Control.Try
+
+V.Local.iRet.Declare(Long)
+V.Local.sFile.Declare(String)
+V.Local.sPath.Declare(String)
+V.Local.iCounter.Declare(Long)
+V.Local.sSeq.Declare(String)
+
+'If both are printing, need to print them one at a time so different file names and paths
+F.Intrinsic.Control.If(V.Screen.FormOutputSelection!ddlExport.Value,=,"Both")
+	'export the price version
+	F.Intrinsic.String.Build("{0} {1} {2}.pdf", V.Global.sPO, "Price", V.Ambient.Date.FormatMM-DD-YYYY, V.Local.sFile)
+	'F.Intrinsic.UI.ShowSaveFileDialog(V.Local.sFile, "pdf|*.pdf", V.Local.sPath)
+	F.Intrinsic.UI.ShowSaveFileDialog(V.Local.sFile,"pdf|*.pdf","\\STGLOBAL\Global Shop Shared Folder\Purchasing Docs",V.Local.sPath)
+	F.Intrinsic.Control.If(V.Local.sPath, !=, "***CANCEL***")
+		F.Global.BI.RunReportPreProcessor(V.Args.iPriceRunID, V.Args.iPriceLogID, V.Global.sParameterNames, V.Global.sParameters, "100020", 4, True, "", -1, "", 0, V.Local.sPath, "", V.Local.iRet)
+	F.Intrinsic.Control.EndIf
+		
+	'Export the noprice version
+	F.Intrinsic.String.Build("{0} {1} {2}.pdf", V.Global.sPO, "NoPrice", V.Ambient.Date.FormatMM-DD-YYYY, V.Local.sFile)
+	'F.Intrinsic.UI.ShowSaveFileDialog(V.Local.sFile, "pdf|*.pdf", V.Local.sPath)
+	F.Intrinsic.UI.ShowSaveFileDialog(V.Local.sFile,"pdf|*.pdf","\\STGLOBAL\Global Shop Shared Folder\Purchasing Docs",V.Local.sPath)
+	F.Intrinsic.Control.If(V.Local.sPath, !=, "***CANCEL***")
+		F.Global.BI.RunReportPreProcessor(V.Args.iNoPriceRunID, V.Args.iNoPriceLogID, V.Global.sParameterNames, V.Global.sParameters, "002801", 4, True, "", -1, "", 0, V.Local.sPath, "", V.Local.iRet)
+	F.Intrinsic.Control.EndIf
+	
+F.Intrinsic.Control.Elseif(V.Screen.FormOutputSelection!ddlExport.Value,=,"Price")
+	F.Intrinsic.String.Build("{0} {1} {2}.pdf", V.Global.sPO, "Price", V.Ambient.Date.FormatMM-DD-YYYY, V.Local.sFile)
+	'F.Intrinsic.UI.ShowSaveFileDialog(V.Local.sFile, "pdf|*.pdf", V.Local.sPath)
+	F.Intrinsic.UI.ShowSaveFileDialog(V.Local.sFile,"pdf|*.pdf","\\STGLOBAL\Global Shop Shared Folder\Purchasing Docs",V.Local.sPath)
+	F.Intrinsic.Control.If(V.Local.sPath, !=, "***CANCEL***")
+		F.Global.BI.RunReportPreProcessor(V.Args.iPriceRunID, V.Args.iPriceLogID, V.Global.sParameterNames, V.Global.sParameters, "100020", 4, True, "", -1, "", 0, V.Local.sPath, "", V.Local.iRet)
+	F.Intrinsic.Control.EndIf
+	
+F.Intrinsic.Control.Else
+	F.Intrinsic.String.Build("{0} {1} {2}.pdf", V.Global.sPO, "NoPrice", V.Ambient.Date.FormatMM-DD-YYYY, V.Local.sFile)
+	'F.Intrinsic.UI.ShowSaveFileDialog(V.Local.sFile, "pdf|*.pdf", V.Local.sPath)
+	F.Intrinsic.UI.ShowSaveFileDialog(V.Local.sFile,"pdf|*.pdf","\\STGLOBAL\Global Shop Shared Folder\Purchasing Docs",V.Local.sPath)
+	F.Intrinsic.Control.If(V.Local.sPath, !=, "***CANCEL***")
+		F.Global.BI.RunReportPreProcessor(V.Args.iNoPriceRunID, V.Args.iNoPriceLogID, V.Global.sParameterNames, V.Global.sParameters, "002801", 4, True, "", -1, "", 0, V.Local.sPath, "", V.Local.iRet)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Export.End
+
+Program.Sub.Email.Start
+V.Local.sError.Declare(String)
+F.Intrinsic.Control.Try
+
+V.Local.iRet.Declare(Long)
+V.Local.sGabPath.Declare(String)
+'Changing it to use GCG_3178_Email_PO_PDF.gas instead of the crystal emailer
+'F.Global.BI.RunReportPreProcessor(V.Args.iRunID, V.Args.iLogID, V.Global.sParameterNames, V.Global.sParameters, "002801", 2, True, "", -1, "", -1, "", "", V.Local.iRet)
+F.Global.General.SetPassedDataElement("000011", V.Global.sVendor)
+F.Global.General.SetPassedDataElement("000008", V.Global.sPO)
+F.Global.General.SetPassedDataElement("000035", V.Global.sBuyer)
+F.Global.General.SetPassedDataElement("777777", 0)
+'F.Intrinsic.String.Build("{0}\GCG_3178_Email_PO_PDF.gas", V.Caller.GASDir, V.Local.sGabPath)
+'Now calling modified version of email program
+F.Intrinsic.String.Build("{0}\GCG_5211_EmailPOMultipleAttachments.g2u", V.Caller.GASDir, V.Local.sGabPath)
+
+'If both are selected, need to activate and call one at a time
+F.Global.General.CallSyncGAS(V.Local.sGabPath, V.Local.iRet)
+
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Email.End
+
+Program.Sub.Print.Start
+V.Local.sError.Declare(String)
+F.Intrinsic.Control.Try
+
+V.Local.iRet.Declare(Long)
+V.Local.sRet.Declare(String)
+
+F.Intrinsic.Control.If(V.Screen.FormOutputSelection!ddlPrint.Value,=,"Both")
+	'print the price version
+	F.Intrinsic.Printer.SelectPrinterDialog(V.Local.sRet)
+	F.Intrinsic.Control.If(V.Ambient.PrinterDialogSelection,!=,"***CANCEL***")
+		F.Global.BI.RunReportPreProcessor(V.Args.iPriceRunID, V.Args.iPriceLogID, V.Global.sParameterNames, V.Global.sParameters, "100020", 8, True, "", -1, V.Ambient.PrinterDialogSelection, -1, "", "", V.Local.iRet)
+		'print the no price version
+		F.Global.BI.RunReportPreProcessor(V.Args.iNoPriceRunID, V.Args.iNoPriceLogID, V.Global.sParameterNames, V.Global.sParameters, "002801", 8, True, "", -1, V.Ambient.PrinterDialogSelection, -1, "", "", V.Local.iRet)
+	F.Intrinsic.Control.EndIf
+	
+F.Intrinsic.Control.ElseIf(V.Screen.FormOutputSelection!ddlPrint.Value,=,"Price")
+	F.Intrinsic.Printer.SelectPrinterDialog(V.Local.sRet)
+	F.Intrinsic.Control.If(V.Ambient.PrinterDialogSelection,!=,"***CANCEL***")
+		F.Global.BI.RunReportPreProcessor(V.Args.iPriceRunID, V.Args.iPriceLogID, V.Global.sParameterNames, V.Global.sParameters, "100020", 8, True, "", -1, V.Ambient.PrinterDialogSelection, -1, "", "", V.Local.iRet)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Else
+	F.Intrinsic.Printer.SelectPrinterDialog(V.Local.sRet)
+	F.Intrinsic.Control.If(V.Ambient.PrinterDialogSelection,!=,"***CANCEL***")
+		F.Global.BI.RunReportPreProcessor(V.Args.iNoPriceRunID, V.Args.iNoPriceLogID, V.Global.sParameterNames, V.Global.sParameters, "002801", 8, True, "", -1, V.Ambient.PrinterDialogSelection, -1, "", "", V.Local.iRet)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+
+F.Intrinsic.Control.Catch
+    F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+    F.Intrinsic.UI.Msgbox(V.Local.sError)
+    F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.Print.End
+
+
